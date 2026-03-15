@@ -1,0 +1,26 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          docker build -t covenant-ai/frontend .
+
+      - name: Save artifact
+        run: |
+          docker save covenant-ai/frontend > frontend-image.tar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: frontend-image.tar
