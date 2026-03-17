@@ -1,27 +1,48 @@
 name: Run AI Model
 
-on: [push]  # Runs when you push code
+# Trigger on push to any branch
+on: [push]
 
+# 🔑 CRITICAL: Grant the built-in GITHUB_TOKEN permission to use GitHub Models
 permissions:
-  models: read  # 🔑 Critical: gives the built-in token permission
+  models: read
+  contents: read   # optional, for checking out code
 
 jobs:
   call-model:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      
+
       - name: Install dependencies
         run: |
-          pip install azure-ai-inference azure-core
-      
-      - name: Run AI script
+          python -m pip install --upgrade pip
+          pip install azure-ai-inference azure-core openai  # openai added as alternative
+
+      - name: Run AI script with Azure SDK
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Automatically available!
-        run: python your_script.py
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python ai_script.py
+
+      # Optional: Test with curl if the Python script fails (helps debug)
+      - name: Fallback curl test (if Python fails)
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Testing API directly with curl..."
+          curl -s -X POST "https://models.github.ai/inference/chat/completions" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "messages": [{"role": "user", "content": "Say hello in JSON format"}],
+              "model": "meta/llama-3.3-70b-instruct",
+              "temperature": 0.7,
+              "max_tokens": 50
+            }' | jq . || echo "Curl failed, check token and endpoint"
