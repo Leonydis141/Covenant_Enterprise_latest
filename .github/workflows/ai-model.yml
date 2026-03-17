@@ -1,0 +1,27 @@
+name: Run AI Model
+
+on: [push]  # Runs when you push code
+
+permissions:
+  models: read  # 🔑 Critical: gives the built-in token permission
+
+jobs:
+  call-model:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install azure-ai-inference azure-core
+      
+      - name: Run AI script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Automatically available!
+        run: python your_script.py
