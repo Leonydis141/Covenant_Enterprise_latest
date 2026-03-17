@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+CONTEXT=$1
+DOCKERFILE=$2
+IMAGE_NAME=$3
+TAGS=$4
+PUSH=$5
+
+# Login to container registry (credentials must be provided via environment)
+if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+  echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+fi
+
+# Build
+docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" "$CONTEXT"
+
+# Tag and push
+for TAG in $(echo "$TAGS" | tr ',' ' '); do
+  FULL_TAG="${IMAGE_NAME}:${TAG}"
+  docker tag "$IMAGE_NAME" "$FULL_TAG"
+  if [ "$PUSH" = "true" ]; then
+    docker push "$FULL_TAG"
+  fi
+done
