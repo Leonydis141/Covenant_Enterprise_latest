@@ -1,81 +1,41 @@
-"""
-FastAPI Application - Production Ready
-"""
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
 import uvicorn
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from covenant.config import settings
+from covenant.api.routes import router as api_router
 
-from covenant.core.engine import create_engine, Action, VerificationLevel
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="COVENANT.AI v5.0",
-    description="Ultimate Constitutional AI Platform",
-    version="5.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    docs_url="/api/docs"
 )
 
-# Middleware
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
-                   allow_methods=["*"], allow_headers=["*"])
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+# Secure CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Global engine instance
-engine = create_engine()
-
-class EvaluateRequest(BaseModel):
-    action_type: str
-    description: str
-    actor: str = "system"
-    parameters: Dict[str, Any] = {}
-    context: Dict[str, Any] = {}
-    verification_level: str = "STANDARD"
-
-@app.get("/")
-async def root():
-    return {
-        "name": "COVENANT.AI Ultimate",
-        "version": "5.0.0",
-        "status": "operational",
-        "features": [
-            "Multi-agent swarm intelligence",
-            "5-level verification",
-            "Blockchain proofs",
-            "Real-time analytics",
-            "Auto-scaling ready"
-        ]
-    }
+app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health")
-async def health():
-    return engine.get_health()
-
-@app.post("/api/v1/evaluate")
-async def evaluate(request: EvaluateRequest):
-    """Evaluate action through constitutional framework"""
-    action = Action(
-        type=request.action_type,
-        description=request.description,
-        actor=request.actor,
-        parameters=request.parameters,
-        context=request.context
-    )
-    
-    try:
-        level = VerificationLevel[request.verification_level]
-    except KeyError:
-        level = VerificationLevel.STANDARD
-    
-    result = await engine.evaluate(action, level)
-    return result.to_dict()
-
-@app.get("/api/v1/metrics")
-async def get_metrics():
-    """Get engine metrics"""
-    return engine.get_metrics()
+async def health_check():
+    return {"status": "online", "version": settings.VERSION}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    logger.info(f"Starting {settings.PROJECT_NAME} on {settings.HOST}:{settings.PORT}")
+    # Fix Bandit B104 by pulling host from settings
+    uvicorn.run(
+        "covenant.api.main:app", 
+        host=settings.HOST, 
+        port=settings.PORT, 
+        reload=settings.DEBUG
+    )
