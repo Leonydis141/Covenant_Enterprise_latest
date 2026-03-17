@@ -1,0 +1,33 @@
+name: 'Docker Build & Push'
+description: 'Build and push a COVENANT.AI Docker image'
+author: 'COVENANT.AI Team'
+
+inputs:
+  context:
+    description: 'Docker build context directory'
+    required: true
+  dockerfile:
+    description: 'Path to Dockerfile'
+    required: false
+    default: 'Dockerfile'
+  image-name:
+    description: 'Name of the image to build'
+    required: true
+  tags:
+    description: 'Comma-separated list of tags'
+    required: false
+    default: 'latest'
+  push:
+    description: 'Whether to push the image'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'  # This action uses its own Dockerfile
+  args:
+    - ${{ inputs.context }}
+    - ${{ inputs.dockerfile }}
+    - ${{ inputs.image-name }}
+    - ${{ inputs.tags }}
+    - ${{ inputs.push }}
