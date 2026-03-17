@@ -1,0 +1,25 @@
+name: 'Backend Test Runner'
+description: 'Install Python dependencies and run pytest with coverage'
+author: 'COVENANT.AI Team'
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+  test-path:
+    description: 'Path to the test directory'
+    required: false
+    default: 'backend/tests'
+  coverage-threshold:
+    description: 'Minimum required coverage percentage'
+    required: false
+    default: '80'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+
+branding:
+  icon: 'check-circle'
+  color: 'green'
