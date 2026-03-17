@@ -1,0 +1,65 @@
+name: 'Setup COVENANT Development Environment'
+description: 'Installs dependencies and prepares the environment'
+author: 'COVENANT.AI Team'
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '22'
+  install-backend:
+    description: 'Install backend dependencies'
+    required: false
+    default: 'true'
+  install-frontend:
+    description: 'Install frontend dependencies'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      if: ${{ inputs.install-backend == 'true' }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install backend dependencies
+      if: ${{ inputs.install-backend == 'true' }}
+      shell: bash
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        pip install -r requirements.txt
+
+    - name: Set up Node.js
+      if: ${{ inputs.install-frontend == 'true' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      if: ${{ inputs.install-frontend == 'true' }}
+      shell: bash
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+
+    - name: Create .env file from example
+      shell: bash
+      run: cp backend/.env.example backend/.env || true
+
+    - name: Verify setup
+      shell: bash
+      run: |
+        echo "✅ Development environment ready"
+        python --version || true
+        node --version || true
