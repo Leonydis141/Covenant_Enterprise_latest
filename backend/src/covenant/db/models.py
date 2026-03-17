@@ -1,7 +1,3 @@
-"""
-COVENANT.AI Enterprise - Database Models
-Implements SQLAlchemy 2.0 Mapped patterns.
-"""
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
@@ -9,7 +5,6 @@ from sqlalchemy import String, Text, DateTime, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
-    """Base class for all enterprise models."""
     pass
 
 class User(Base):
@@ -26,9 +21,6 @@ class User(Base):
     )
 
     constraints: Mapped[List["ConstitutionalConstraint"]] = relationship(back_populates="creator")
-
-    def __repr__(self) -> str:
-        return f"<User(email={self.email!r})>"
 
 class ConstitutionalConstraint(Base):
     __tablename__ = "constitutional_constraints"
@@ -48,20 +40,3 @@ class ConstitutionalConstraint(Base):
     )
 
     creator: Mapped["User"] = relationship(back_populates="constraints")
-
-    def __repr__(self) -> str:
-        return f"<Constraint(id={self.id!r}, version={self.version!r})>"
-
-class AuditLog(Base):
-    __tablename__ = "audit_logs"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    action_id: Mapped[str] = mapped_column(String(50), index=True)
-    actor: Mapped[str] = mapped_column(String(100))
-    event_type: Mapped[str] = mapped_column(String(50))
-    payload: Mapped[dict] = mapped_column(JSON)
-    outcome: Mapped[str] = mapped_column(String(20))
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
-        default=lambda: datetime.now(timezone.utc)
-    )
