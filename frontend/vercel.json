@@ -1,0 +1,35 @@
+{
+  "version": 3,
+  "name": "covenant-enterprise-latest",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "VITE_API_URL": "@vite_api_url",
+    "VITE_ANOTHER_SECRET": "@vite_another_secret"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production",
+      "VITE_API_URL": "@vite_api_url",
+      "VITE_ANOTHER_SECRET": "@vite_another_secret"
+    }
+  },
+  "github": {
+    "silent": false,
+    "enabled": true
+  }
+}
