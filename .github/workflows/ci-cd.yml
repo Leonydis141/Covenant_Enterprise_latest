@@ -2,9 +2,9 @@ name: COVENANT.AI CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main, develop]
 
 jobs:
   backend-test:
@@ -18,45 +18,99 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install Backend Dependencies
+        working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx bandit safety
 
-      - name: Security Scan (Bandit)
-        run: bandit -r backend/src -ll
+      - name: Run Bandit Security Scan
+        working-directory: ./backend
+        run: bandit -r src -ll
 
-      - name: Run Tests
-        run: pytest backend/tests
+      - name: Run Backend Tests
+        working-directory: ./backend
+        run: pytest tests
 
   frontend-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 24
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
         run: |
-          cd frontend
-          npm ci
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "Auto-generate package-lock.json [ci skip]" || echo "No changes"
 
-      - name: Lint & Build
+      - name: Lint & Build Frontend
+        working-directory: ./frontend
         run: |
-          cd frontend
           npm run lint
           npm run build
 
   deploy:
     needs: [backend-test, frontend-build]
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to Production
-        run: echo "Initiating zero-downtime deployment sequence..."
+      - uses: actions/checkout@v6
+
+      - name: Determine Deployment Type
+        id: deploy-target
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "deploy_type=preview" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "deploy_type=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "deploy_type=production" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_type=skip" >> $GITHUB_OUTPUT
+
+      - name: Trigger Vercel Deployment
+        if: steps.deploy-target.outputs.deploy_type != 'skip'
+        id: vercel
+        uses: amondnet/vercel-action@v23
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: |
+            ${{ 
+              steps.deploy-target.outputs.deploy_type == 'preview' && echo "--prod=false" || 
+              steps.deploy-target.outputs.deploy_type == 'staging' && echo "--prod=true --confirm" || 
+              steps.deploy-target.outputs.deploy_type == 'production' && echo "--prod --confirm"
+            }}
+          working-directory: ./frontend
+
+      - name: Comment PR with Preview URL
+        if: steps.deploy-target.outputs.deploy_type == 'preview'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: "COVENANT.AI PR Preview"
+          message: "✅ Live preview available: ${{ steps.vercel.outputs.preview-url }}"
+
+      - name: Comment Staging/Production Deployment
+        if: steps.deploy-target.outputs.deploy_type == 'staging' || steps.deploy-target.outputs.deploy_type == 'production'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: "COVENANT.AI Deployment Info"
+          message: |
+            ✅ ${{ steps.deploy-target.outputs.deploy_type | capitalize }} deployed successfully!
+            🔗 Live URL: ${{ steps.vercel.outputs.url }}
