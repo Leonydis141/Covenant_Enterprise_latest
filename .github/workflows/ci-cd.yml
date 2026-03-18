@@ -101,14 +101,14 @@ jobs:
 
       - name: Comment PR with Preview URL
         if: steps.deploy-target.outputs.deploy_type == 'preview'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: "COVENANT.AI PR Preview"
           message: "✅ Live preview available: ${{ steps.vercel.outputs.preview-url }}"
 
       - name: Comment Staging/Production Deployment
         if: steps.deploy-target.outputs.deploy_type == 'staging' || steps.deploy-target.outputs.deploy_type == 'production'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: "COVENANT.AI Deployment Info"
           message: |
